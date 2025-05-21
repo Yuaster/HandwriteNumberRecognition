@@ -1,0 +1,8 @@
+keras==2.10.0
+matplotlib==3.7.2
+numpy==1.24.3
+opencv_python==4.2.0.32
+Pillow==11.2.1
+PyQt5==5.15.11
+PyQt5_sip==12.15.0
+tensorflow==2.10.0
