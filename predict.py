@@ -6,14 +6,19 @@ from PIL import Image
 
 model = load_model("self_model/best_train_model.h5", custom_objects={'RandomRotation': RandomRotation, 'RandomZoom': RandomZoom, 'BatchNormalization': BatchNormalization})
 
-def load_and_preprocess_image(image_path):
-    image = Image.open(image_path)
-    image = image.convert('L')
-    image = image.resize((28, 28))
-    image = np.array(image)
-    image = image.astype('float32') / 255
-    image = image.reshape(1, 28, 28, 1)
-    return image
+
+def load_and_preprocess_image(image, is_pil_image=False):
+    if is_pil_image:
+        pil_image = image
+    else:
+        pil_image = Image.open(image)
+    pil_image = pil_image.convert('L')
+    pil_image = pil_image.resize((28, 28))
+    image_array = np.array(pil_image)
+    image_array = image_array.astype('float32') / 255
+    image_array = image_array.reshape(1, 28, 28, 1)
+
+    return image_array
 
 def plot_predictions(image):
     predictions = model.predict(image)
@@ -25,6 +30,8 @@ def plot_predictions(image):
     plt.axis('off')
     plt.show()
 
-image_path = "yolo/result_img_for_predict/digit_9.png"
-new_image = load_and_preprocess_image(image_path)
-plot_predictions(new_image)
+
+# if __name__ == '__main__':
+#     image_path = "yolo_about/result_img_for_predict/digit_9.png"
+#     new_image = load_and_preprocess_image(image_path)
+#     plot_predictions(new_image)

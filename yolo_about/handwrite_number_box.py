@@ -100,7 +100,7 @@ class DigitDetector:
     def _load_image(self, image_source):
         """统一图像加载逻辑"""
         if isinstance(image_source, str) and image_source.startswith("data:image"):
-            return decode_base64_image(image_source)
+            return self.decode_base64_image(image_source)
         else:
             img = cv2.imread(image_source)
             if img is None:
@@ -108,37 +108,37 @@ class DigitDetector:
             return img
 
 
-def decode_base64_image(image_data):
-    header, data = image_data.split(",", 1)
-    nparr = np.frombuffer(base64.b64decode(data), np.uint8)
-    return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    def decode_base64_image(image_data):
+        header, data = image_data.split(",", 1)
+        nparr = np.frombuffer(base64.b64decode(data), np.uint8)
+        return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
 
-if __name__ == "__main__":
-    detector = DigitDetector()
-    test_source = "test_image/img.png"
-    output_dir = "result_img_for_predict"
-
-    # 从预处理后图像裁剪
-    result_image, digits = detector.detect_and_extract_digits(
-        test_source,
-        output_dir,
-        use_processed=True  # 设为True表示从预处理后图像裁剪
-    )
-
-    if result_image is not None:
-        plt.figure(figsize=(12, 8))
-        plt.imshow(cv2.cvtColor(result_image, cv2.COLOR_BGR2RGB))
-        plt.axis("off")
-        plt.title("Digit Extraction from Processed Image")
-        plt.show()
-
-        # 显示提取的数字
-        if digits:
-            fig, axes = plt.subplots(1, len(digits), figsize=(15, 3))
-            for i, digit in enumerate(digits):
-                axes[i].imshow(cv2.cvtColor(digit, cv2.COLOR_BGR2RGB))
-                axes[i].axis("off")
-                axes[i].set_title(f"Digit {i}")
-            plt.tight_layout()
-            plt.show()
+# if __name__ == "__main__":
+#     detector = DigitDetector()
+#     test_source = "test_image/img.png"
+#     output_dir = "result_img_for_predict"
+#
+#     # 从预处理后图像裁剪
+#     result_image, digits = detector.detect_and_extract_digits(
+#         test_source,
+#         output_dir,
+#         use_processed=True  # 设为True表示从预处理后图像裁剪
+#     )
+#
+#     if result_image is not None:
+#         plt.figure(figsize=(12, 8))
+#         plt.imshow(cv2.cvtColor(result_image, cv2.COLOR_BGR2RGB))
+#         plt.axis("off")
+#         plt.title("Digit Extraction from Processed Image")
+#         plt.show()
+#
+#         # 显示提取的数字
+#         if digits:
+#             fig, axes = plt.subplots(1, len(digits), figsize=(15, 3))
+#             for i, digit in enumerate(digits):
+#                 axes[i].imshow(cv2.cvtColor(digit, cv2.COLOR_BGR2RGB))
+#                 axes[i].axis("off")
+#                 axes[i].set_title(f"Digit {i}")
+#             plt.tight_layout()
+#             plt.show()
