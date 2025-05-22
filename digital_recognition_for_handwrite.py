@@ -66,7 +66,7 @@ class HandwritingPad(QWidget):
 
     def initUI(self):
         self.setGeometry(300, 300, 1000, 700)
-        self.setWindowTitle('工业级鼠标书写板')
+        self.setWindowTitle('Handwrite pad')
         self.setStyleSheet("background-color: #f5f5f5;")
 
         main_layout = QHBoxLayout()
@@ -122,8 +122,8 @@ class HandwritingPad(QWidget):
             QPushButton:pressed { background-color: #3d7bc2; }
         """
 
-        self.clear_btn = QPushButton("清空画布")
-        self.predict_btn = QPushButton("预测数字")
+        self.clear_btn = QPushButton("Clear")
+        self.predict_btn = QPushButton("Predict")
         self.clear_btn.setStyleSheet(button_style)
         self.predict_btn.setStyleSheet(button_style)
 

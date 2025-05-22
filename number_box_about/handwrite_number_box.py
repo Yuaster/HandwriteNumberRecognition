@@ -64,6 +64,7 @@ class DigitDetector:
             contours, _ = cv2.findContours(processed_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             result_image = image.copy()
             digit_images = []
+            digit_boxes = []  # 新增：存储每个数字的边界框信息
 
             for i, cnt in enumerate(contours):
                 x, y, w, h = cv2.boundingRect(cnt)
@@ -76,7 +77,6 @@ class DigitDetector:
 
                 # 根据选项选择裁剪原图还是预处理后的图像
                 if use_processed:
-                    # 创建与原图相同大小的预处理后图像（RGB）
                     processed_rgb = self._preprocess_for_visual(image, debug=False)
                     digit_roi = processed_rgb[y1:y2, x1:x2]
                 else:
@@ -89,16 +89,16 @@ class DigitDetector:
                     cv2.imwrite(digit_path, digit_roi)
 
                 digit_images.append(digit_roi)
+                digit_boxes.append((x1, y1, x2, y2))  # 保存边界框坐标
                 cv2.rectangle(result_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
-            return result_image, digit_images
+            return result_image, digit_images, digit_boxes  # 返回边界框信息
 
         except Exception as e:
             print(f"处理错误: {e}")
-            return None, []
+            return None, [], []  # 返回空边界框列表
 
     def _load_image(self, image_source):
-        """统一图像加载逻辑"""
         if isinstance(image_source, str) and image_source.startswith("data:image"):
             return self.decode_base64_image(image_source)
         else:
@@ -116,7 +116,7 @@ class DigitDetector:
 
 # if __name__ == "__main__":
 #     detector = DigitDetector()
-#     test_source = "test_image/img.png"
+#     test_source = "test_image/img_1.png"
 #     output_dir = "result_img_for_predict"
 #
 #     # 从预处理后图像裁剪

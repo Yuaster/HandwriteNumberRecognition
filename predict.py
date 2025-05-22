@@ -30,8 +30,7 @@ def plot_predictions(image):
     plt.axis('off')
     plt.show()
 
-
-# if __name__ == '__main__':
-#     image_path = "yolo_about/result_img_for_predict/digit_9.png"
-#     new_image = load_and_preprocess_image(image_path)
-#     plot_predictions(new_image)
+def get_predictions(image):
+    predictions = model.predict(image)
+    pred_label = np.argmax(predictions[0])
+    return pred_label

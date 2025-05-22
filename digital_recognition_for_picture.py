@@ -7,8 +7,8 @@ from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QPushButton,
                              QLabel, QFileDialog, QMessageBox)
 from matplotlib import pyplot as plt
 
-from predict import load_and_preprocess_image, plot_predictions
-from yolo_about.handwrite_number_box import DigitDetector
+from predict import load_and_preprocess_image, get_predictions
+from number_box_about.handwrite_number_box import DigitDetector
 
 
 class ImageRecognitionApp(QWidget):
@@ -148,26 +148,41 @@ class ImageRecognitionApp(QWidget):
     def recognition(self):
         detector = DigitDetector()
         test_source = self.filepath
-        output_dir = "yolo_about/result_img_for_predict"
+        output_dir = "number_box_about/result_img_for_predict"
 
-        result_image, digits = detector.detect_and_extract_digits(
+        # 获取边界框信息
+        result_image, digits, boxes = detector.detect_and_extract_digits(
             test_source,
             output_dir,
             use_processed=True
         )
 
-        if result_image is not None:
-            plt.figure(figsize=(12, 8))
-            plt.imshow(cv2.cvtColor(result_image, cv2.COLOR_BGR2RGB))
-            plt.axis("off")
-            plt.title("Digit Extraction from Processed Image")
-            plt.show()
-
         if digits:
-            for i, digit in enumerate(digits):
+            result_with_predictions = result_image.copy()
+
+            for i, (digit, box) in enumerate(zip(digits, boxes)):
+                x1, y1, x2, y2 = box
                 digit_pil = Image.fromarray(cv2.cvtColor(digit, cv2.COLOR_BGR2GRAY))
                 processed_image = load_and_preprocess_image(digit_pil, is_pil_image=True)
-                plot_predictions(processed_image)
+                prediction = get_predictions(processed_image)
+
+                cv2.putText(
+                    result_with_predictions,
+                    f"Pred: {prediction}",
+                    (x1, y1 - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.8,
+                    (0, 255, 0),
+                    2
+                )
+                print(f"Digit {i} 位置: {box}, 预测结果: {prediction}")
+
+            if result_with_predictions is not None:
+                plt.figure(figsize=(12, 8))
+                plt.imshow(cv2.cvtColor(result_with_predictions, cv2.COLOR_BGR2RGB))
+                plt.axis("off")
+                plt.title("Digit Extraction with Predictions")
+                plt.show()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
