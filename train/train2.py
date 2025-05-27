@@ -86,11 +86,11 @@ callbacks = [
         patience=3
     ),
     tf.keras.callbacks.ModelCheckpoint(
-        'self_model/best_train_model.h5',
+        '../self_model/best_train_model.h5',
         save_best_only=True,
         monitor='val_accuracy'
     ),
-    tf.keras.callbacks.TensorBoard(log_dir='./logs')
+    tf.keras.callbacks.TensorBoard(log_dir='logs')
 ]
 
 # 6. 执行训练

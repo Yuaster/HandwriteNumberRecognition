@@ -159,6 +159,11 @@ class ImageRecognitionApp(QWidget):
 
         if digits:
             result_with_predictions = result_image.copy()
+            height, width = result_with_predictions.shape[:2]  # 获取图片尺寸
+
+            # 计算与图片尺寸相关的参数
+            font_scale = width / 800  # 动态字体大小，每500像素宽度对应字体大小1.0
+            thickness = max(1, int(width / 200))  # 动态线条粗细，每200像素宽度对应粗细1
 
             for i, (digit, box) in enumerate(zip(digits, boxes)):
                 x1, y1, x2, y2 = box
@@ -171,9 +176,9 @@ class ImageRecognitionApp(QWidget):
                     f"Pred: {prediction}",
                     (x1, y1 - 10),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    0.8,
+                    font_scale,  # 使用动态字体大小
                     (0, 255, 0),
-                    2
+                    thickness  # 使用动态线条粗细
                 )
                 print(f"Digit {i} 位置: {box}, 预测结果: {prediction}")
 

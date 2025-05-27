@@ -116,7 +116,7 @@ class DigitDetector:
 
 # if __name__ == "__main__":
 #     detector = DigitDetector()
-#     test_source = "test_image/img_1.png"
+#     test_source = "test_image/img3.png"
 #     output_dir = "result_img_for_predict"
 #
 #     # 从预处理后图像裁剪

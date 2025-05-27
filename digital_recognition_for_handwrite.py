@@ -4,13 +4,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 from PyQt5.QtCore import Qt, QPoint
-from PyQt5.QtGui import (QPainter, QPen, QImage)
+from PyQt5.QtGui import (QPainter, QPen, QImage, QFont)
 from PyQt5.QtWidgets import (QApplication, QWidget, QPushButton, QVBoxLayout,
                              QHBoxLayout)
 from keras.layers import RandomRotation, RandomZoom, BatchNormalization
 from tensorflow.python.keras.saving.save import load_model
 
-model_url = "self_model\\best_train_model.h5"
+import json
+
+with open('config.json', 'r', encoding='utf-8') as f:
+    data = json.load(f)
 
 class DrawingWidget(QWidget):
     def __init__(self, parent=None):
@@ -61,7 +64,7 @@ class DrawingWidget(QWidget):
 class HandwritingPad(QWidget):
     def __init__(self):
         super().__init__()
-        self.model = load_model(model_url, custom_objects={'RandomRotation': RandomRotation, 'RandomZoom': RandomZoom, 'BatchNormalization': BatchNormalization})
+        self.model = load_model(data['model'], custom_objects={'RandomRotation': RandomRotation, 'RandomZoom': RandomZoom, 'BatchNormalization': BatchNormalization})
         self.initUI()
 
     def initUI(self):
@@ -124,6 +127,8 @@ class HandwritingPad(QWidget):
 
         self.clear_btn = QPushButton("Clear")
         self.predict_btn = QPushButton("Predict")
+        self.clear_btn.setFont(QFont("Arial", 12, QFont.Bold))
+        self.predict_btn.setFont(QFont("Arial", 12, QFont.Bold))
         self.clear_btn.setStyleSheet(button_style)
         self.predict_btn.setStyleSheet(button_style)
 
@@ -142,11 +147,9 @@ class HandwritingPad(QWidget):
         qimage = self.drawing_area.image
         buffer = qimage.bits().asstring(qimage.byteCount())
         pil_image = Image.frombuffer("RGBA", (qimage.width(), qimage.height()), buffer, "raw", "RGBA", 0, 1)
-        # 转换为灰度图
+
         pil_image = pil_image.convert('L')
-        # 调整大小为28x28
         pil_image = pil_image.resize((28, 28), Image.Resampling.LANCZOS)
-        # 反转颜色
         pil_image = Image.eval(pil_image, lambda x: 255 - x)
 
         image = np.array(pil_image)

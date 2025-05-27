@@ -4,8 +4,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 
-model = load_model("self_model/best_train_model.h5", custom_objects={'RandomRotation': RandomRotation, 'RandomZoom': RandomZoom, 'BatchNormalization': BatchNormalization})
+import json
 
+with open('config.json', 'r', encoding='utf-8') as f:
+    data = json.load(f)
+
+model = load_model(data["model"], custom_objects={'RandomRotation': RandomRotation, 'RandomZoom': RandomZoom, 'BatchNormalization': BatchNormalization})
 
 def load_and_preprocess_image(image, is_pil_image=False):
     if is_pil_image:
