@@ -150,19 +150,16 @@ class ImageRecognitionApp(QWidget):
         test_source = self.filepath
         output_dir = "number_box_about/result_img_for_predict"
 
-        # 获取边界框信息
         result_image, digits, boxes = detector.detect_and_extract_digits(
             test_source,
             output_dir,
-            use_processed=True
         )
 
         if digits:
             result_with_predictions = result_image.copy()
             height, width = result_with_predictions.shape[:2]  # 获取图片尺寸
 
-            # 计算与图片尺寸相关的参数
-            font_scale = width / 800  # 动态字体大小，每500像素宽度对应字体大小1.0
+            font_scale = width / 900  # 动态字体大小，每500像素宽度对应字体大小1.0
             thickness = max(1, int(width / 200))  # 动态线条粗细，每200像素宽度对应粗细1
 
             for i, (digit, box) in enumerate(zip(digits, boxes)):
