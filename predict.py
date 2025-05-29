@@ -38,3 +38,7 @@ def get_predictions(image):
     predictions = model.predict(image)
     pred_label = np.argmax(predictions[0])
     return pred_label
+
+if __name__ == '__main__':
+    img = load_and_preprocess_image("number_box_about/result_img_for_predict/digit_0.png")
+    plot_predictions(img)
