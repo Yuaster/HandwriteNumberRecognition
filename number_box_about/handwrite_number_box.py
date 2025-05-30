@@ -9,39 +9,41 @@ class DigitDetector:
         self.clahe_clip_limit = 3.0
         self.clahe_grid_size = (8, 8)
         self.aspect_ratio_range = (0.8, 1.2)  # 合适的宽高比范围
+        self.dark_bg_threshold = 127  # 背景亮度阈值，可调整
 
     def _preprocess_base(self, image, debug=False):
-        # 1. 颜色空间分析
-        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        # 0. 提前判断背景类型
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-        # 2. 判断背景类型（亮色/暗色）
         mean_brightness = np.mean(gray)
-        is_dark_bg = mean_brightness < 127
+        is_dark_bg = mean_brightness < self.dark_bg_threshold
 
-        # 3. 计算图像熵，评估对比度
-        hist = cv2.calcHist([gray], [0], None, [256], [0, 256])
-        hist_norm = hist.ravel() / hist.sum()
-        entropy = -np.sum(hist_norm[hist_norm > 0] * np.log2(hist_norm[hist_norm > 0]))
+        if debug:
+            print(f"背景亮度: {mean_brightness}, 是否深色背景: {is_dark_bg}")
 
-        # 4. 动态调整对比度
-        if entropy < 4.0:
-            clip_limit = min(self.clahe_clip_limit * (5.0 - entropy), 8.0)
-            clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=self.clahe_grid_size)
-            gray = clahe.apply(gray)
+        # 1. 只有在浅色背景下才进行阴影检测
+        shadow_mask = None
+        if not is_dark_bg:
+            shadow_mask = self._detect_shadow(image, debug)
 
-        # 5. 创建颜色掩码（针对彩色背景）
+        # 2. 对原图进行常规预处理
+        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+        # 动态调整对比度
+        clahe = cv2.createCLAHE(clipLimit=self.clahe_clip_limit,
+                                tileGridSize=self.clahe_grid_size)
+        gray = clahe.apply(gray)
+
+        # 创建颜色掩码
         hue = hsv[:, :, 0]
         hue_variance = np.var(hue)
         color_mask = np.zeros_like(gray)
 
         if hue_variance > 100:  # 彩色背景
-            # 尝试分离深色数字
             lower_black = np.array([0, 0, 0])
             upper_black = np.array([180, 255, 70])
             color_mask = cv2.inRange(hsv, lower_black, upper_black)
 
-        # 6. 选择合适的阈值方法
+        # 选择合适的阈值方法
         median = cv2.medianBlur(gray, 3)
         filtered = cv2.bilateralFilter(median, 7, 50, 50)
 
@@ -50,29 +52,98 @@ class DigitDetector:
         else:
             _, thresh = cv2.threshold(filtered, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
-        # 7. 融合多种方法的结果
-        combined = cv2.bitwise_or(thresh, color_mask)
-
-        # 8. 形态学操作
+        # 形态学操作
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
-        opened = cv2.morphologyEx(combined, cv2.MORPH_OPEN, kernel, iterations=1)
+        opened = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=1)
 
-        # 9. 形态学重建
+        # 形态学重建
         seed = opened.copy()
         kernel_reconstruct = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-        for _ in range(10):
+        for _ in range(5):
             dilated = cv2.dilate(seed, kernel_reconstruct)
             seed = cv2.bitwise_and(dilated, opened)
         reconstructed = seed.copy()
 
+        # 3. 阴影区域处理（仅对浅色背景进行）
+        if not is_dark_bg and shadow_mask is not None:
+            # 创建阴影区域的掩码
+            shadow_indices = np.where(shadow_mask > 0)
+
+            # 在阴影区域内，只保留reconstructed中与shadow_mask重叠的部分
+            shadow_overlap = np.zeros_like(reconstructed)
+            shadow_overlap[shadow_indices] = reconstructed[shadow_indices]
+
+            result = shadow_overlap
+        else:
+            # 深色背景直接使用常规预处理结果
+            result = reconstructed
+
+        # 4. 后处理优化
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+        result = cv2.morphologyEx(result, cv2.MORPH_CLOSE, kernel, iterations=1)
+
         if debug:
             try:
-                debug_path = "number_box_about/result_debug/debug_reconstructed.jpg"
-                cv2.imwrite(debug_path, reconstructed)
+                cv2.imwrite("number_box_about/result_debug/debug_final_result.jpg", result)
+                cv2.imwrite("number_box_about/result_debug/debug_reconstructed.jpg", reconstructed)
+                if shadow_mask is not None:
+                    cv2.imwrite("number_box_about/result_debug/debug_shadow_mask.jpg", shadow_mask)
             except Exception as e:
                 print(f"保存调试图像失败: {e}")
 
-        return reconstructed
+        return result
+
+    def _detect_shadow(self, image, debug=False):
+        """基于亮度分析的阴影检测"""
+        # 转换到LAB颜色空间
+        lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+        l, a, b = cv2.split(lab)
+
+        # 计算亮度通道的统计特征
+        l_mean = np.mean(l)
+        l_std = np.std(l)
+
+        # 动态确定低亮度阈值
+        low_threshold = max(0, l_mean - l_std * 1.2)  # 可调整参数
+
+        # 创建低亮度掩码
+        low_luminance = np.zeros_like(l)
+        low_luminance[l < low_threshold] = 255
+
+        # 对比度增强
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        enhanced_l = clahe.apply(l)
+
+        # 自适应阈值处理
+        _, adaptive_thresh = cv2.threshold(enhanced_l, 0, 255,
+                                           cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+
+        # 融合两种阴影指示
+        shadow_mask = cv2.bitwise_and(low_luminance, adaptive_thresh)
+
+        # 形态学操作优化
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+        opening = cv2.morphologyEx(shadow_mask, cv2.MORPH_OPEN, kernel, iterations=1)
+        closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE, kernel, iterations=2)
+
+        # 移除小区域
+        contours, _ = cv2.findContours(closing, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        min_area = max(100, image.shape[0] * image.shape[1] * 0.0005)
+
+        final_mask = np.zeros_like(closing)
+        for cnt in contours:
+            if cv2.contourArea(cnt) > min_area:
+                cv2.drawContours(final_mask, [cnt], -1, 255, -1)
+
+        if debug:
+            try:
+                cv2.imwrite("number_box_about/result_debug/debug_low_luminance.jpg", low_luminance)
+                cv2.imwrite("number_box_about/result_debug/debug_adaptive_thresh.jpg", adaptive_thresh)
+                cv2.imwrite("number_box_about/result_debug/debug_shadow_mask.jpg", final_mask)
+            except Exception as e:
+                print(f"保存阴影检测调试图像失败: {e}")
+
+        return final_mask
 
     def _preprocess_for_visual(self, image, debug=False):
         reconstructed = self._preprocess_base(image, debug)
@@ -171,7 +242,6 @@ class DigitDetector:
         if self.aspect_ratio_range[0] <= aspect_ratio <= self.aspect_ratio_range[1]:
             return image
 
-        # 计算目标尺寸
         if aspect_ratio < self.aspect_ratio_range[0]:  # 太窄，增加宽度
             target_w = int(h * self.aspect_ratio_range[0])
             padding = (target_w - w) // 2
@@ -179,7 +249,7 @@ class DigitDetector:
                 image, 0, 0, padding, target_w - w - padding,
                 cv2.BORDER_CONSTANT, value=[0, 0, 0]
             )
-        else:  # 太宽，增加高度
+        else:
             target_h = int(w / self.aspect_ratio_range[1])
             padding = (target_h - h) // 2
             padded = cv2.copyMakeBorder(

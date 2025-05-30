@@ -8,6 +8,7 @@ class DigitDetector:
     def __init__(self):
         self.clahe_clip_limit = 3.0
         self.clahe_grid_size = (8, 8)
+        self.aspect_ratio_range = (0.8, 1.2)  # 合适的宽高比范围
 
     def _preprocess_base(self, image, debug=False):
         # 1. 颜色空间分析
@@ -122,6 +123,9 @@ class DigitDetector:
                 else:
                     digit_roi = image[y1:y2, x1:x2]
 
+                # 检测并调整长宽比
+                digit_roi = self._ensure_aspect_ratio(digit_roi)
+
                 if output_dir:
                     os.makedirs(output_dir, exist_ok=True)
                     digit_path = os.path.join(output_dir, f"digit_{i}.png")
@@ -151,3 +155,36 @@ class DigitDetector:
         header, data = image_data.split(",", 1)
         nparr = np.frombuffer(base64.b64decode(data), np.uint8)
         return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+    def _ensure_aspect_ratio(self, image):
+        """确保图像的宽高比在合适范围内，否则填充纯黑底色"""
+        if image.size == 0:
+            return image
+
+        h, w = image.shape[:2]
+        if h == 0 or w == 0:
+            return image
+
+        aspect_ratio = w / h
+
+        # 如果长宽比在合适范围内，直接返回原图
+        if self.aspect_ratio_range[0] <= aspect_ratio <= self.aspect_ratio_range[1]:
+            return image
+
+        # 计算目标尺寸
+        if aspect_ratio < self.aspect_ratio_range[0]:  # 太窄，增加宽度
+            target_w = int(h * self.aspect_ratio_range[0])
+            padding = (target_w - w) // 2
+            padded = cv2.copyMakeBorder(
+                image, 0, 0, padding, target_w - w - padding,
+                cv2.BORDER_CONSTANT, value=[0, 0, 0]
+            )
+        else:  # 太宽，增加高度
+            target_h = int(w / self.aspect_ratio_range[1])
+            padding = (target_h - h) // 2
+            padded = cv2.copyMakeBorder(
+                image, padding, target_h - h - padding, 0, 0,
+                cv2.BORDER_CONSTANT, value=[0, 0, 0]
+            )
+
+        return padded
