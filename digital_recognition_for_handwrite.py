@@ -1,19 +1,14 @@
 import sys
 
-import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import (QPainter, QPen, QImage, QFont)
 from PyQt5.QtWidgets import (QApplication, QWidget, QPushButton, QVBoxLayout,
                              QHBoxLayout)
-from keras.layers import RandomRotation, RandomZoom, BatchNormalization
-from tensorflow.python.keras.saving.save import load_model
 
-import json
+from predict import plot_predictions, load_and_preprocess_image
 
-with open('config.json', 'r', encoding='utf-8') as f:
-    data = json.load(f)
 
 class DrawingWidget(QWidget):
     def __init__(self, parent=None):
@@ -64,7 +59,6 @@ class DrawingWidget(QWidget):
 class HandwritingPad(QWidget):
     def __init__(self):
         super().__init__()
-        self.model = load_model(data['model'], custom_objects={'RandomRotation': RandomRotation, 'RandomZoom': RandomZoom, 'BatchNormalization': BatchNormalization})
         self.initUI()
 
     def initUI(self):
@@ -149,21 +143,13 @@ class HandwritingPad(QWidget):
         pil_image = Image.frombuffer("RGBA", (qimage.width(), qimage.height()), buffer, "raw", "RGBA", 0, 1)
 
         pil_image = pil_image.convert('L')
-        pil_image = pil_image.resize((28, 28), Image.Resampling.LANCZOS)
+        pil_image = pil_image.resize((28, 28))
         pil_image = Image.eval(pil_image, lambda x: 255 - x)
+        image_array = np.array(pil_image)
+        image_array = image_array.astype('float32') / 255
+        image = image_array.reshape(1, 28, 28, 1)
 
-        image = np.array(pil_image)
-        image = image.astype('float32') / 255
-        image = image.reshape(1, 28, 28, 1)
-
-        predictions = self.model.predict(image)
-        pred_label = np.argmax(predictions[0])
-
-        plt.figure(figsize=(3, 3))
-        plt.imshow(image[0].reshape(28, 28), cmap='gray')
-        plt.title(f"Pred: {pred_label}", color='blue')
-        plt.axis('off')
-        plt.show()
+        plot_predictions(image)
 
 
 if __name__ == '__main__':
