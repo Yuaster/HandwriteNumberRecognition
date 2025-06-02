@@ -3,13 +3,13 @@ from tensorflow.python.keras.saving.save import load_model
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
-
 import json
 
 with open('config.json', 'r', encoding='utf-8') as f:
     data = json.load(f)
 
 model = load_model(data["model"], custom_objects={'RandomRotation': RandomRotation, 'RandomZoom': RandomZoom, 'BatchNormalization': BatchNormalization})
+
 
 def load_and_preprocess_image(image, is_pil_image=False):
     if is_pil_image:
@@ -40,5 +40,5 @@ def get_predictions(image):
     return pred_label
 
 if __name__ == '__main__':
-    img = load_and_preprocess_image("number_box_about/result_img_for_predict/digit_0.png")
+    img = load_and_preprocess_image("number_box_about/result_img_for_predict/digit_3.png")
     plot_predictions(img)

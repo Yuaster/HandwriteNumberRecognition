@@ -8,7 +8,7 @@ class DigitDetector:
     def __init__(self):
         self.clahe_clip_limit = 3.0
         self.clahe_grid_size = (8, 8)
-        self.aspect_ratio_range = (0.8, 1.2)  # 合适的宽高比范围
+        self.aspect_ratio_range = (0.9, 1.1)  # 合适的宽高比范围
         self.dark_bg_threshold = 127  # 背景亮度阈值，可调整
 
     def _preprocess_base(self, image, debug=False):
@@ -118,22 +118,7 @@ class DigitDetector:
         _, adaptive_thresh = cv2.threshold(enhanced_l, 0, 255,
                                            cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
-        # 融合两种阴影指示
-        shadow_mask = cv2.bitwise_and(low_luminance, adaptive_thresh)
-
-        # 形态学操作优化
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-        opening = cv2.morphologyEx(shadow_mask, cv2.MORPH_OPEN, kernel, iterations=1)
-        closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE, kernel, iterations=2)
-
-        # 移除小区域
-        contours, _ = cv2.findContours(closing, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        min_area = max(100, image.shape[0] * image.shape[1] * 0.0005)
-
-        final_mask = np.zeros_like(closing)
-        for cnt in contours:
-            if cv2.contourArea(cnt) > min_area:
-                cv2.drawContours(final_mask, [cnt], -1, 255, -1)
+        final_mask = low_luminance
 
         if debug:
             try:
