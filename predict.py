@@ -1,14 +1,16 @@
-from keras.layers import RandomRotation, RandomZoom, BatchNormalization
+from keras.layers import RandomRotation, RandomZoom, BatchNormalization, RandomTranslation, RandomContrast
 from tensorflow.python.keras.saving.save import load_model
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 import json
 
+from train.attention_train import SEBlock
+
 with open('config.json', 'r', encoding='utf-8') as f:
     data = json.load(f)
 
-model = load_model(data["model"], custom_objects={'RandomRotation': RandomRotation, 'RandomZoom': RandomZoom, 'BatchNormalization': BatchNormalization})
+model = load_model(data["model"], custom_objects={'RandomRotation': RandomRotation, 'RandomZoom': RandomZoom, 'BatchNormalization': BatchNormalization, "RandomTranslation": RandomTranslation, "RandomContrast": RandomContrast, "SEBlock": SEBlock})
 
 
 def load_and_preprocess_image(image, is_pil_image=False):

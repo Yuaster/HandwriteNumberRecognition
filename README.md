@@ -3,4 +3,3 @@
 ![img.png](static/img.png)
 ### digital_recognition_for_picture:
 ![img_1.png](static/img_1.png)
-

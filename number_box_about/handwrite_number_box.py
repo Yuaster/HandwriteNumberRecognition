@@ -8,11 +8,11 @@ class DigitDetector:
     def __init__(self):
         self.clahe_clip_limit = 3.0
         self.clahe_grid_size = (8, 8)
-        self.aspect_ratio_range = (0.9, 1.1)  # 合适的宽高比范围
-        self.dark_bg_threshold = 127  # 背景亮度阈值，可调整
+        self.aspect_ratio_range = (0.9, 1.1)
+        self.dark_bg_threshold = 110
 
     def _preprocess_base(self, image, debug=False):
-        # 0. 提前判断背景类型
+        # 提前判断背景类型
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         mean_brightness = np.mean(gray)
         is_dark_bg = mean_brightness < self.dark_bg_threshold
@@ -20,12 +20,12 @@ class DigitDetector:
         if debug:
             print(f"背景亮度: {mean_brightness}, 是否深色背景: {is_dark_bg}")
 
-        # 1. 只有在浅色背景下才进行阴影检测
+        # 阴影检测
         shadow_mask = None
         if not is_dark_bg:
             shadow_mask = self._detect_shadow(image, debug)
 
-        # 2. 对原图进行常规预处理
+        # 对原图进行常规预处理
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
         # 动态调整对比度
@@ -64,7 +64,7 @@ class DigitDetector:
             seed = cv2.bitwise_and(dilated, opened)
         reconstructed = seed.copy()
 
-        # 3. 阴影区域处理（仅对浅色背景进行）
+        # 阴影区域处理
         if not is_dark_bg and shadow_mask is not None:
             # 创建阴影区域的掩码
             shadow_indices = np.where(shadow_mask > 0)
@@ -78,7 +78,7 @@ class DigitDetector:
             # 深色背景直接使用常规预处理结果
             result = reconstructed
 
-        # 4. 后处理优化
+        # 后处理优化
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
         result = cv2.morphologyEx(result, cv2.MORPH_CLOSE, kernel, iterations=1)
 
@@ -110,20 +110,10 @@ class DigitDetector:
         low_luminance = np.zeros_like(l)
         low_luminance[l < low_threshold] = 255
 
-        # 对比度增强
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        enhanced_l = clahe.apply(l)
-
-        # 自适应阈值处理
-        _, adaptive_thresh = cv2.threshold(enhanced_l, 0, 255,
-                                           cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-
         final_mask = low_luminance
 
         if debug:
             try:
-                cv2.imwrite("number_box_about/result_debug/debug_low_luminance.jpg", low_luminance)
-                cv2.imwrite("number_box_about/result_debug/debug_adaptive_thresh.jpg", adaptive_thresh)
                 cv2.imwrite("number_box_about/result_debug/debug_shadow_mask.jpg", final_mask)
             except Exception as e:
                 print(f"保存阴影检测调试图像失败: {e}")
@@ -140,7 +130,7 @@ class DigitDetector:
 
         contours, _ = cv2.findContours(reconstructed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         mask = np.zeros_like(reconstructed)
-        min_area = image.shape[0] * image.shape[1] * 0.0005
+        min_area = image.shape[0] * image.shape[1] * 0.001
 
         for cnt in contours:
             if cv2.contourArea(cnt) > min_area:
